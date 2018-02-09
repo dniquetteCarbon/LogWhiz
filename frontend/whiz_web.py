@@ -1,4 +1,4 @@
-from flask import Flask, request
+from flask import Flask, render_template, request, redirect
 from flask_restful import Resource, Api
 from core.log_manager import LogManager
 from flask.json import jsonify
@@ -27,6 +27,24 @@ class Reputation(Resource):
 
 api.add_resource(Search, '/Search/<search_string>')
 api.add_resource(Reputation, '/Reputation/<hash>')
+
+session = {'search_result': ''}
+
+@app.route("/")
+def index():
+    search_result = session['search_result']
+    search_data = ''
+    for line in search_result:
+        search_data += line
+    return render_template('index.html', search_data=search_data)
+
+@app.route('/Search', methods = ['POST'])
+def Search():
+    global MANAGER
+    search_string = request.form['search_string']
+    data = MANAGER.search_index(search_string)
+    session['search_result'] = data
+    return redirect('/')
 
 if __name__ == '__main__':
     app.run()

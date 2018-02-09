@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>LogWhiz</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/index.css') }}">
+</head>
+<body>
+    <div class="whiznav">
+        <img height='50px' src="{{ url_for('static',filename='wizard.svg') }}">
+        <a>LogWhiz</a>
+        <div class="search-container">
+            <form action='/Search' method="post">
+                <input type="text" placeholder="Search..." name="search_string">
+                <button type="submit"><i class="fa fa-search"></i></button>
+            </form>
+        </div>
+    </div>
+    <div>
+      <textarea>{{ search_data }}</textarea>
+    </div>
+</body>
+</html>
