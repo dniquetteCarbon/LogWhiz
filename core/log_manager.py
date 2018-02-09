@@ -67,6 +67,16 @@ class LogManager:
             result = self.get_lines_for_index_list(log_line_numbers)
         return result
 
+    def search_log_file(self, search_string):
+        lines = []
+        with open(self.log_file_name) as log_file:
+            for line in log_file:
+                if search_string in line:
+                    lines.append(line)
+        if len(lines) == 0:
+            return None
+        return lines
+
     def get_lines_for_index_list(self, index_list):
         lines = []
         with open(self.log_file_name) as log_file:

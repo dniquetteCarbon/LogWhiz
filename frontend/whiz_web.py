@@ -34,8 +34,9 @@ session = {'search_result': ''}
 def index():
     search_result = session['search_result']
     search_data = ''
-    for line in search_result:
-        search_data += line
+    if search_result is not None:
+        for line in search_result:
+            search_data += line
     return render_template('index.html', search_data=search_data)
 
 @app.route('/Search', methods = ['POST'])
@@ -43,6 +44,8 @@ def Search():
     global MANAGER
     search_string = request.form['search_string']
     data = MANAGER.search_index(search_string)
+    if data is None:
+        data = MANAGER.search_log_file(search_string)
     session['search_result'] = data
     return redirect('/')
 
