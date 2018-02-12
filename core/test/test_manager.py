@@ -12,3 +12,9 @@ def test_full_index():
 
     assert manager.first_line_in_log is None
     assert manager.last_index is None
+
+
+def test_log_search():
+    manager = LogManager()
+    data = manager.search_index('0x00000200', html=True)
+    assert data

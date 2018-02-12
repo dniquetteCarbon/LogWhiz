@@ -44,7 +44,7 @@ class LogParser:
         line_info = self.extract_date_time(log_line, line_info)
         return line_info
 
-    def extract_hash(self, log_line: str, line_info):
+    def extract_hash(self, log_line: str, line_info={}):
         hash_matched = re.findall(HASH_REG, log_line)
         if hash_matched:
             file_hash = []

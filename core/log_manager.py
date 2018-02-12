@@ -1,4 +1,5 @@
 import platform
+import re
 from core.log_parser import LogParser
 from core.whiz_index import WhizIndex
 
@@ -53,7 +54,7 @@ class LogManager:
         self.first_line_in_log = None
         self.last_index = None
 
-    def search_index(self, search_string):
+    def search_index(self, search_string, html=False):
         if not self.first_line_is_equal():
             self.clear_index()
             self.index_full_log()
@@ -64,26 +65,61 @@ class LogManager:
         if not log_line_numbers:
             result = None
         else:
-            result = self.get_lines_for_index_list(log_line_numbers)
+            result = self.get_lines_for_index_list(log_line_numbers, html=html)
         return result
 
-    def search_log_file(self, search_string):
+    def search_log_file(self, search_string, html=False):
         lines = []
         with open(self.log_file_name) as log_file:
             for line in log_file:
                 if search_string in line:
+                    if html:
+                        line = self.add_html_to_line(line)
                     lines.append(line)
         if len(lines) == 0:
             return None
         return lines
 
-    def get_lines_for_index_list(self, index_list):
+    def get_lines_for_index_list(self, index_list, html=False):
         lines = []
         with open(self.log_file_name) as log_file:
             for i, line in enumerate(log_file):
                 if i in index_list:
+                    if html:
+                        line = self.add_html_to_line(line)
                     lines.append(line)
         return lines
+
+    def add_html_to_line(self, log_line):
+        log_line = '<div>{}</div>'.format(log_line)
+        log_line = self.add_hash_search_links(log_line)
+        return log_line
+
+    def add_hash_search_links(self, log_line: str):
+        hash_info = self.parser.extract_hash(log_line)
+        if 'file_hash' in hash_info.keys():
+            file_hash_list = hash_info['file_hash']
+            for file_hash in file_hash_list:
+                log_line = log_line.replace(file_hash, "<a class='hashlink' href='/Search?search_string={0}' >{0}</a>".format(file_hash))
+        if 'rep_hash' in hash_info.keys():
+            rep_hash_list = hash_info['rep_hash']
+            for rep_hash in rep_hash_list:
+                log_line = self.add_tooltip(rep_hash, log_line)
+        return log_line
+
+    def add_tooltip(self, text: str, log_line: str):
+        tool_tip = self.get_tooltip_for_text(text)
+        tool_tip_line = "<div class='tooltip'><a class='tooltiplink' href='/Search?search_string={0}'>{0}</a><span class='tooltiptext'>{1}</span></div>".format(text, tool_tip)
+        log_line = log_line.replace(text, tool_tip_line)
+        return log_line
+
+    def get_tooltip_for_text(self, text: str):
+        tip = ''
+        for rep_hash in  self.parser.reputation_hash.keys():
+            if text == rep_hash:
+                tip = self.parser.reputation_hash[text]
+                break
+        return tip
 
     def first_line_is_equal(self):
         with open(self.log_file_name, 'r') as f:
