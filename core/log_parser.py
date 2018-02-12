@@ -3,6 +3,9 @@ import re
 HASH_REG = r'(0x[a-zA-Z0-9]{8})'
 DATE_REG = r'(\d+/\d+/\d+)'
 TIME_REG = r'([0-9]{2}:[0-9]{2}:[0-9]{2})'
+FILE_REG = r'.*: (.*),.* (0x[a-zA-Z0-9]{8}).*(0x[a-zA-Z0-9]{8}).*'
+FILE_REG2 = r'.* (0x[a-zA-Z0-9]{8}): filename (.*): policy.*'
+
 
 class LogParser:
 
@@ -33,6 +36,8 @@ class LogParser:
         '0x80000000': 'SI_PROPERTY_BIT_NOT_SUPPORTED'
     }
 
+    file_hash = {}
+
     def get_reputation_hash_def(self, hash):
         if hash in self.reputation_hash.keys():
             return self.reputation_hash[hash]
@@ -42,6 +47,7 @@ class LogParser:
         line_info = {'log_line': log_line}
         line_info = self.extract_hash(log_line, line_info)
         line_info = self.extract_date_time(log_line, line_info)
+        line_info = self.extract_warn_error(log_line, line_info)
         return line_info
 
     def extract_hash(self, log_line: str, line_info={}):
@@ -56,7 +62,26 @@ class LogParser:
                     file_hash.append(hash)
             line_info['file_hash'] = file_hash
             line_info['rep_hash'] = rep_hash
+            self.add_file_hash_name(log_line)
         return line_info
+
+    def add_file_hash_name(self, log_line):
+        if 'RepUtilHashFileEx' in log_line:
+            matched = re.search(FILE_REG, log_line)
+            if matched:
+                file_name = matched.group(1)
+                hash = matched.group(2)
+                md5 = matched.group(3)
+
+                self.file_hash[hash] = file_name
+                self.file_hash[md5] = file_name
+        elif 'RepUtilFastPath' in log_line:
+            matched = re.search(FILE_REG2, log_line)
+            if matched:
+                file_name = matched.group(2)
+                hash = matched.group(1)
+
+                self.file_hash[hash] = file_name
 
     def extract_date_time(self, log_line: str, line_info):
         date_match = re.findall(DATE_REG, log_line)
@@ -67,3 +92,10 @@ class LogParser:
             line_info['time'] = time_match
         return line_info
 
+    def extract_warn_error(self, log_line: str, line_info):
+        if 'warn' in log_line.lower():
+            line_info['warn'] = True
+        if 'error' in log_line.lower():
+            if not 'error count' in log_line.lower():
+                line_info['error'] = True
+        return line_info

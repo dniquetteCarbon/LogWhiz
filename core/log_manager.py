@@ -1,7 +1,15 @@
 import platform
-import re
+import threading
+import datetime
+import os
 from core.log_parser import LogParser
 from core.whiz_index import WhizIndex
+
+import logging
+log = logging.getLogger(__name__)
+hdlr = logging.FileHandler(__name__ + '.log')
+hdlr.setLevel(logging.DEBUG)
+log.addHandler(hdlr)
 
 class LogManager:
 
@@ -21,18 +29,39 @@ class LogManager:
         self.parser = LogParser()
         self.index = WhizIndex()
         self.date_time_index = WhizIndex()
+        self.warn_error_index = WhizIndex()
         self.first_line_in_log = None
-        self.last_index = None
+        self.last_index = 0
+        self.error_count = 0
+        self.warn_count = 0
+        self.last_read_time = None
+        self.log_thread = None
+        self.update_index()
+
+    def update_index(self):
+        self.log_thread = threading.Timer(60.0, self.update_index)
+        self.log_thread.start()
+        log.info("Updating Index")
+        if self.log_file_name is None:
+            log.error("Log File Required")
+            return
+        if not os.path.exists(self.log_file_name):
+            log.error("Log File does not exist")
+            return
+        if not self.first_line_is_equal():
+            log.info("Re indexing Confer.log")
+            self.clear_index()
+            self.last_index = 0
         self.index_full_log()
+        self.last_read_time = datetime.datetime.now()
 
     def index_full_log(self):
-        if self.log_file_name is None:
-            raise Exception("Log File Required")
-
         with open(self.log_file_name) as log_file:
             for i, line in enumerate(log_file):
                 if i is 0:
                     self.first_line_in_log = line
+                if i < self.last_index:
+                    continue
                 self.last_index = i
                 self.add_line_to_index(i, line)
 
@@ -44,6 +73,8 @@ class LogManager:
             if key is 'date' or key is 'time':
                 for info_item in line_info[key]:
                     self.date_time_index.add_line_for_value(new_key=info_item, new_line=line_index)
+            elif key is 'warn' or key is 'error':
+                self.warn_error_index.add_line_for_value(new_key=key, new_line=line_index)
             else:
                 for info_item in line_info[key]:
                     self.index.add_line_for_value(new_key=info_item, new_line=line_index)
@@ -54,11 +85,10 @@ class LogManager:
         self.first_line_in_log = None
         self.last_index = None
 
-    def search_index(self, search_string, html=False):
-        if not self.first_line_is_equal():
-            self.clear_index()
-            self.index_full_log()
+    def shutdown_log_thread(self):
+        self.log_thread.cancel()
 
+    def search_index(self, search_string, html=False):
         log_line_numbers = self.index.search(search_string)
         if not log_line_numbers:
             log_line_numbers = self.date_time_index.search(search_string)
@@ -100,7 +130,8 @@ class LogManager:
         if 'file_hash' in hash_info.keys():
             file_hash_list = hash_info['file_hash']
             for file_hash in file_hash_list:
-                log_line = log_line.replace(file_hash, "<a class='hashlink' href='/Search?search_string={0}' >{0}</a>".format(file_hash))
+                # log_line = log_line.replace(file_hash, "<a class='hashlink' href='/Search?search_string={0}' >{0}</a>".format(file_hash))
+                log_line = self.add_tooltip(file_hash, log_line)
         if 'rep_hash' in hash_info.keys():
             rep_hash_list = hash_info['rep_hash']
             for rep_hash in rep_hash_list:
@@ -108,12 +139,14 @@ class LogManager:
         return log_line
 
     def add_tooltip(self, text: str, log_line: str):
-        tool_tip = self.get_tooltip_for_text(text)
-        tool_tip_line = "<div class='tooltip'><a class='tooltiplink' href='/Search?search_string={0}'>{0}</a><span class='tooltiptext'>{1}</span></div>".format(text, tool_tip)
+        tool_tip = self.get_tooltip_for_rep(text)
+        if not tool_tip:
+            tool_tip = self.get_tooltip_for_hash(text)
+        tool_tip_line = "<div class='whiztooltip'><a class='tooltiplink' href='/Search?search_string={0}'>{0}</a><span class='tooltiptext'>{1}</span></div>".format(text, tool_tip)
         log_line = log_line.replace(text, tool_tip_line)
         return log_line
 
-    def get_tooltip_for_text(self, text: str):
+    def get_tooltip_for_rep(self, text: str):
         tip = ''
         for rep_hash in  self.parser.reputation_hash.keys():
             if text == rep_hash:
@@ -121,7 +154,18 @@ class LogManager:
                 break
         return tip
 
+    def get_tooltip_for_hash(self, text: str):
+        tip = ''
+        for file_hash in self.parser.file_hash.keys():
+            if text == file_hash:
+                tip = self.parser.file_hash[text]
+                break
+        return tip
+
     def first_line_is_equal(self):
+        if not self.first_line_in_log:
+            return False
+
         with open(self.log_file_name, 'r') as f:
             first_line = f.readline()
 
@@ -131,3 +175,13 @@ class LogManager:
 
     def get_repuation_def(self, rep_hash):
         return self.parser.get_reputation_hash_def(rep_hash)
+
+    def get_errors(self, html=False):
+        log_line_numbers = self.warn_error_index.search('error')
+        result = self.get_lines_for_index_list(log_line_numbers, html=html)
+        return result
+
+    def get_warnings(self, html=False):
+        log_line_numbers = self.warn_error_index.search('warn')
+        result = self.get_lines_for_index_list(log_line_numbers, html=html)
+        return result

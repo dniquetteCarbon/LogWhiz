@@ -6,8 +6,9 @@ def test_full_index():
     assert manager.index
     assert manager.date_time_index
     assert manager.first_line_in_log == '02/08/18 10:10:49: 1f48     SvcReportStatus: service not allowed to stop\n'
-    assert manager.last_index == 34061
+    assert manager.last_index == 34066
 
+    manager.shutdown_log_thread()
     manager.clear_index()
 
     assert manager.first_line_in_log is None
