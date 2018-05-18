@@ -1,8 +1,8 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='cbd-support',
-    description='Python tool set for Defense Sensor and Backend(server).',
+    name='logwhiz',
+    description='Python tool for working with Defense log',
     packages=find_packages(),
     install_requires=[
         'flask',

@@ -1,47 +1,42 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>LogWhiz</title>
+    <title>CBDError</title>
 
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+    <script src="https://code.highcharts.com/highcharts.js"></script>
+    <script src="https://code.highcharts.com/modules/data.js"></script>
+    <script src="https://code.highcharts.com/modules/drilldown.js"></script>
+    <script src="https://code.highcharts.com/modules/series-label.js"></script>
+    <script src="https://code.highcharts.com/modules/exporting.js"></script>
+    <script src="https://code.highcharts.com/modules/export-data.js"></script>
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
     <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/index.css') }}">
 </head>
 <body>
-    <div class="whiznav">
-        <img height='50px' src="{{ url_for('static',filename='wizard.svg') }}">
-        <a>LogWhiz</a>
-        <div class="search-container">
-            <form action='/Search' method="post">
-                <input type="text" placeholder="Search..." name="search_string">
-                <button type="submit"><i class="fa fa-search"></i></button>
-            </form>
+    <nav class="navbar navbar-default">
+        <div class="container-fluid">
+            <div class="navbar-header">
+                <a class="navbar-brand" href="/home">CBDError</a>
+            </div>
+            <ul class="nav navbar-nav">
+                <li class="active"><a href="/topten">Top 10</a></li>
+            </ul>
+            <div class="errorsearch" align="right">
+                <form class="form-inline my-2 my-lg-0" action='/SearchError' method="post">
+                    <input class="form-control mr-sm-2" type="text" placeholder="Search..." name="search_string">
+                    <button class="btn btn-outline-success my-2 my-sm-0" type="submit"><i class="fa fa-search"></i></button>
+                </form>
+            </div>
         </div>
-    </div>
-    <div class="logbox">{{ search_data }}</div>
-    <div>Last Read: {{last_read_time}}</div>
-    <div class="icon_div">
-        <img class="log_icon" src="{{ url_for('static',filename='error.png') }}">
-        <span class="icon_span">Errors: {{error_count}}</span>
-        <button id="error_button" type="button" class="btn btn-info" data-toggle="collapse" data-target="#errors">show</button>
-    </div>
-    <div id="errors" class="collapse">
-        <div class="error_warn">
-            {{error_data}}
-        </div>
-    </div>
-    <div class="icon_div">
-        <img class="log_icon" src="{{ url_for('static',filename='warn.png') }}" >
-        <span class="icon_span">Warnings: {{warn_count}}</span>
-        <button id="warn_button" type="button" class="btn btn-info" data-toggle="collapse" data-target="#warnings">show</button>
-    </div>
-    <div id="warnings" class="collapse">
-        <div class="error_warn">
-            {{warn_data}}
-        </div>
-    </div>
+    </nav>
+    <div class="title_div"><h3>{{ title }}</h3></div>
+
+    <div id="container"></div>
+    <div id="pie_container"></div>
+    <script type=text/javascript src="{{url_for('static', filename='js/log_highchart.js') }}"></script>
 </body>
 </html>

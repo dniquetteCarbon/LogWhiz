@@ -2,8 +2,10 @@ import platform
 import threading
 import datetime
 import os
+import re
 from core.log_parser import LogParser
 from core.whiz_index import WhizIndex
+from typing import List
 
 import logging
 log = logging.getLogger(__name__)
@@ -26,6 +28,7 @@ class LogManager:
         if self.sensor_os == 'Darwin':
             self.log_file_name = self.MAC_LOG
 
+        '''
         self.parser = LogParser()
         self.index = WhizIndex()
         self.date_time_index = WhizIndex()
@@ -37,6 +40,10 @@ class LogManager:
         self.last_read_time = None
         self.log_thread = None
         self.update_index()
+        '''
+
+    def set_log(self, file_path: str):
+        self.log_file_name = file_path
 
     def update_index(self):
         self.log_thread = threading.Timer(60.0, self.update_index)
@@ -185,3 +192,24 @@ class LogManager:
         log_line_numbers = self.warn_error_index.search('warn')
         result = self.get_lines_for_index_list(log_line_numbers, html=html)
         return result
+
+    def reduce_similar_errors(self, data: List[str], existing_errors: List[str] = None):
+        unique_errors = []
+        error_reg = {
+            r'\(pid=(.*)\)': '',
+            r'MSI.*.tmp': 'MSI.tmp'
+        }
+        errors = [x.rstrip("\n")[28:] for x in data]
+        for error in errors:
+            for key, value in error_reg.items():
+                error = re.sub(key, value, error)
+
+            unique_errors.append(error)
+
+        if existing_errors:
+            for existing in existing_errors:
+                if existing in unique_errors:
+                    unique_errors.remove(existing)
+
+        unique_errors = {x: unique_errors.count(x) for x in unique_errors}
+        return unique_errors
