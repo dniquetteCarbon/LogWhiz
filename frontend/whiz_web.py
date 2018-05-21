@@ -83,6 +83,7 @@ def update_logs():
     stored_builds = db_manager.query_jenkins_job_builds()
 
     if latest_build not in stored_builds:
+        db_manager.delete_old_entries()
         dl_result = j_helper.download_confer_log()
         job_id = db_manager.add_jenkins_job(dl_result['job_name'], dl_result['build_num'], dl_result['build_time'])
         db_manager.commit()
@@ -97,11 +98,10 @@ def update_logs():
                 line_id = db_manager.add_log_line(error, None)
                 db_manager.add_job_line_error(line_id, job_id, count, guest_os, sensor_version)
                 db_manager.commit()
-        #data = db_manager.query_errors()
 
         session['search_result'] = db_manager.query_total_errors()
     data = session['search_result']
-    db_manager.delete_old_entries()
+
     return jsonify(data)
 
 @app.route("/logwhiz")

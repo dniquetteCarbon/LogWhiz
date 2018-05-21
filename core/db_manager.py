@@ -3,6 +3,7 @@ from flask import Flask
 from sqlalchemy.exc import IntegrityError
 import operator
 import re
+import time
 
 LOG_DB = SQLAlchemy()
 
@@ -194,6 +195,7 @@ class DBManager:
         return self.format_for_chart(error_data)
 
     def query_top_ten(self):
+        '''
         data = JobLineError.query.all()
 
         error_data = {}
@@ -222,6 +224,29 @@ class DBManager:
                 final_error_data[error.log_line.text][error.job_info.date] += error.error_count
 
         return self.format_for_chart(final_error_data, sensor_version)
+        '''
+        error_data = self.query_format_all_data()
+        last_build = error_data['last_build_time']
+        if len(error_data['line_data']) >= 10:
+            top_ten = dict(sorted(error_data['line_data'].items(), key=self.get_count, reverse=True)[:10])
+        else:
+            top_ten = error_data
+
+        ten_pie = []
+        for slice in error_data['pie_data']:
+            if slice['name'] in top_ten.keys() and slice['time'] == last_build:
+                ten_pie.append(slice)
+
+        error_data['line_data'] = top_ten
+        error_data['pie_data'] = ten_pie
+
+        return error_data
+
+    def get_count(self, elements):
+        key, value = elements
+        sort_item = value[-1]['y']
+        return sort_item
+
 
     def format_for_chart(self, data_dict: {}, sensor_version: {} = None):
         graph_temp = {}
@@ -262,6 +287,44 @@ class DBManager:
             'pie_data': pie_final
         }
 
+    def query_format_all_data(self):
+        data = JobLineError.query.all()
+        last_build_time = 0
+        for error in data:
+            if last_build_time < error.job_info.date:
+                last_build_time = error.job_info.date
+
+        return {
+            'line_data': self.build_line_graph_data(data),
+            'pie_data': self.build_pie_data(data),
+            'last_build_time': last_build_time
+        }
+
+    def build_line_graph_data(self, data):
+        graph_data = {}
+        for error in data:
+            graph_data['{} - {}'.format(error.log_line.text, error.guest_os)] = []
+
+        for error in data:
+            graph_data['{} - {}'.format(error.log_line.text, error.guest_os)].append(
+                {
+                    'x': error.job_info.date,
+                    'y': error.error_count
+                }
+            )
+        return graph_data
+
+    def build_pie_data(self, data):
+        pie_data = []
+        for error in data:
+            pie_data.append({
+                'name': '{} - {}'.format(error.log_line.text, error.guest_os),
+                'y': error.error_count,
+                'drilldown': error.log_line.text,
+                'time': error.job_info.date
+            })
+        return pie_data
+
 
 
     def query_jenkins_job_builds(self):
@@ -274,5 +337,16 @@ class DBManager:
         return build_nums
 
     def delete_old_entries(self):
+        time_now = time.time()
+        save_period = 3600 * 24 * 60
+        delete_time = time_now - save_period
+        data = JobLineError.query.all()
+
+        for error in data:
+            if error.job_info.date < delete_time:
+                self.db.session.delete(error)
+
+        self.db.session.commit()
+
 
 
