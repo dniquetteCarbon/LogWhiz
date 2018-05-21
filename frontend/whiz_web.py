@@ -89,7 +89,7 @@ def update_logs():
         for log_file in dl_result['confer_logs']:
             match = re.search(r'[0-9]+-(.*)-([0-9]+-[0-9]+-[0-9]+-[0-9]+)-', log_file)
             guest_os = match.group(1)
-            sensor_version = match.group(2)
+            sensor_version = match.group(2).replace('-', '.')
             MANAGER.set_log(log_file)
             data = MANAGER.search_log_file('ERROR')
             errors = MANAGER.reduce_similar_errors(data)
@@ -101,6 +101,7 @@ def update_logs():
 
         session['search_result'] = db_manager.query_total_errors()
     data = session['search_result']
+    db_manager.delete_old_entries()
     return jsonify(data)
 
 @app.route("/logwhiz")

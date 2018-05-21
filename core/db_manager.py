@@ -2,6 +2,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask import Flask
 from sqlalchemy.exc import IntegrityError
 import operator
+import re
 
 LOG_DB = SQLAlchemy()
 
@@ -144,7 +145,7 @@ class DBManager:
 
         # initialize dict for matches
         for error in data:
-            if query_string in error.log_line.text:
+            if re.search(query_string, error.log_line.text):
                 error_data[error.log_line.text] = {}
             elif query_string in error.guest_os:
                 error_data[error.guest_os] = {}
@@ -153,20 +154,19 @@ class DBManager:
                 error_data[error.sensor_version] = {}
                 error_data[error.log_line.text] = {}
 
-        # initialize for dates
         for error in data:
-            if query_string in error.guest_os:
+            if re.search(query_string, error.log_line.text):
+                error_data[error.log_line.text][error.job_info.date] = 0
+            elif query_string in error.guest_os:
                 error_data[error.guest_os][error.job_info.date] = 0
                 error_data[error.log_line.text][error.job_info.date] = 0
             elif query_string in error.sensor_version:
                 error_data[error.sensor_version][error.job_info.date] = 0
                 error_data[error.log_line.text][error.job_info.date] = 0
-            elif query_string in error.log_line.text:
-                error_data[error.log_line.text][error.job_info.date] = 0
 
         # count errors
         for error in data:
-            if query_string in error.log_line.text:
+            if re.search(query_string, error.log_line.text):
                 error_data[error.log_line.text][error.job_info.date] += error.error_count
             elif query_string in error.guest_os:
                 error_data[error.guest_os][error.job_info.date] += error.error_count
@@ -245,15 +245,9 @@ class DBManager:
                 if sensor_version:
                     t_data['label'] = sensor_version[type]
                 graph_temp[type].append(t_data)
-            '''
-            for date, total in data.items():
-                data = {'x': date, 'y': total}
-                if date == last_date:
-                    pie_temp[type] += total
-                if sensor_version:
-                    data['label'] = sensor_version[type]
-                graph_temp[type].append(data)
-            '''
+
+        if 'total' in pie_temp:
+            pie_temp.pop('total')
 
         pie_final = []
         for name, y in pie_temp.items():
@@ -278,4 +272,7 @@ class DBManager:
             build_nums. append(build.build_num)
 
         return build_nums
+
+    def delete_old_entries(self):
+
 
